@@ -7,13 +7,23 @@
 
 #include <FileConstants.au3>
 #include <StringConstants.au3>
-Global $foundUT = False
+#include <resources.au3>
+Global $cachePath = ""
 
-Dim $FolderName = @DesktopDir
+Global $FolderName = @DesktopDir
 FindUnrealShortcut($FolderName)
 
-If $foundUT = False Then
-	MsgBox(48, "UT2004 Cache Merge Utility by Shawn", "Sorry, I could not spot a shortcut to Unreal Tournament 2004 anywhere on or near your desktop.")
+If $cachePath = "" Then
+	If FileExists(@ScriptDir & "\UT2004.exe") Then
+		$cachePath = _Filepath_To_Path(@ScriptDir) & "Cache"
+	EndIf
+EndIf
+
+If $cachePath = "" Then
+	MsgBox(48, "UT2004 Cache Merge Utility", "Sorry, I could not spot a shortcut to Unreal Tournament 2004 on your desktop." & @CRLF & @CRLF & "You can place me in the UT2004/System dir and try again.")
+Else
+	$stringStats = moveUtCachedFiles($cachePath)
+	MsgBox(48, "UT2004 Cache Merge Utility", "Done. Unreal Tournament 2004 Cache files were moved to their appropriate UT paths." & @CRLF & @CRLF & $stringStats)
 EndIf
 
 Func FindUnrealShortcut($SourceFolder)
@@ -22,6 +32,7 @@ Func FindUnrealShortcut($SourceFolder)
 	Local $FileAttributes
 	Local $FullFilePath
 	Local $foundShortcut = False
+	Local $unrealShortcut = ""
 
 	$Search = FileFindFirstFile($SourceFolder & "\*.*")
 	While ($foundShortcut = False)
@@ -36,11 +47,10 @@ Func FindUnrealShortcut($SourceFolder)
 			FindUnrealShortcut($FullFilePath)
 		Else
 			If StringRight($FullFilePath, 4) = ".lnk" Then
-				$foundShortcut = ProcessShortcut($FullFilePath)
-				If $foundShortcut = True Then
-					If $foundUT = False Then
-						$foundUT = True
-					EndIf
+				$unrealShortcut = ProcessShortcut($FullFilePath)
+				If Not ($unrealShortcut = "") Then
+					$cachePath = $unrealShortcut
+					$foundShortcut = True
 				EndIf
 			EndIf
 		EndIf
@@ -65,11 +75,7 @@ Func ProcessShortcut($FullFilePath)
 		EndIf
 	EndIf
 
-	If $foundShortcut Then
-		moveUtCachedFiles($cachePath)
-	EndIf
-
-	Return $foundShortcut
+	Return $cachePath
 EndFunc   ;==>ProcessShortcut
 
 ; C:\path\file.ext -> file.ext
@@ -209,8 +215,7 @@ Func moveUtCachedFiles($cachePath)
 	If $filesFailed = True Then
 		$stringStats &= $failedFiles
 	EndIf
-
-	MsgBox(48, "UT2004 Cache Merge Utility by Shawn", "Done. Unreal Tournament 2004 Cache files were moved to their appropriate UT paths." & @CRLF & @CRLF & $stringStats)
+	Return $stringStats
 EndFunc   ;==>moveUtCachedFiles
 
 Func recreateIni($ini, $iniSection, $mainSection)
